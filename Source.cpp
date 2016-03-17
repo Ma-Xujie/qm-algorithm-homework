@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <queue>
 #include <random>
+#include <ctime>
 
 using namespace std;
 
@@ -16,23 +17,20 @@ struct Implicant {  // ÔÌº¬Ïî
 	unsigned int dont_care;
 	bool isPrime;
 
-	void Print(int argc) {  // ²âÊÔÓÃ
+	void Print(int argc) {
 		unsigned int mask = 1 << (argc - 1);
-		char output_ch = 'A';
 		char buffer[100] = { 0 };
 		char *cur_char = buffer;
 		while (mask) {
 			if (mask & digs) {  // '1'
-				*cur_char = output_ch++;
+				*cur_char = '1';
 				++cur_char;
 			} else if (mask & dont_care) {  // '-'
-				// *cur_char = '-';
+				*cur_char = '-';
+				++cur_char;
 			} else {
-				*cur_char = output_ch++;
+				*cur_char = '0';
 				++cur_char;
-				*cur_char = '\'';
-				++cur_char;
-
 			}
 			mask >>= 1;
 		}
@@ -65,10 +63,12 @@ vector<vector<forward_list<Implicant> > > implicants;  // Implicants[ÎŞ¹ØÏî¸öÊı]
 forward_list<Implicant> prime_implicants;  // ±¾ÖÊÔÌº¬Ïî
 vector<Minterm> minterms;  // ×îĞ¡Ïî
 vector<vector<Minterm>::iterator> minterms_ptrs;  // ×îĞ¡ÏîµÄÖ¸Õë
-int min_cover_imps = 2147483647;  // INF
+int cur_min_result_size = 2147483647;  // INF
 vector<vector<forward_list<Implicant>::iterator> > results;  // ½á¹û
 queue<vector<forward_list<Implicant>::iterator> > result_queue;  // BFS ²éÕÒ½á¹ûÊ±ËùÓÃµÄ¶ÓÁĞ
 queue<vector<vector<Minterm>::iterator > > minterm_queue;  // Í¬ÉÏ
+vector<vector<forward_list<Implicant>::iterator> > result_stack;  // DFS ²éÕÒ½á¹ûÊ±ËùÓÃµÄÕ»
+vector<vector<vector<Minterm>::iterator > > minterm_stack;  // Í¬ÉÏ
 
 void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // ²¼¶ûº¯ÊıµÄ²ÎÊıÊıÁ¿ & ×îĞ¡Ïî & ÎŞ¹ØÏî
 	implicants.resize(argc + 1);
@@ -125,6 +125,7 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // ²¼¶ûº
 		}
 	}
 
+	int prime_imp_number = 0;
 	auto prev_imp_ptr = prime_implicants.begin(); // ÓÉÓÚ´ËÁĞ±íµÄÉú³É·½Ê½£¬Êµ¼ÊÉÏ PI.begin() Ò»¶¨ÊÇ±¾Ô­ÔÌº¬Ïî
 	for (auto imp_ptr = prime_implicants.begin(); imp_ptr != prime_implicants.end(); ++imp_ptr) {
 		if (!imp_ptr->isPrime) {
@@ -132,6 +133,7 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // ²¼¶ûº
 			prime_implicants.erase_after(prev_imp_ptr);  // °Ñµ±Ç°µÄÏîÉ¾µô
 		} else {
 			prev_imp_ptr = imp_ptr;
+			++prime_imp_number;
 		}
 	}
 
@@ -152,62 +154,149 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // ²¼¶ûº
 		minterms_ptrs.push_back(ptr);
 	}
 
-	// ³õÊ¼»¯ BFS µÄ¶ÓÁĞ
-	vector<forward_list<Implicant>::iterator> empty_result;
-	result_queue.push(empty_result);
-	minterm_queue.push(minterms_ptrs);
+	bool bfs = prime_imp_number < 60;
 
-	// ÓÃ¹ã¶ÈÓÅÏÈËÑË÷¹¹½¨×îĞ¡¸²¸Ç
-	while (!result_queue.empty()) {  // ÖÕÖ¹Ìõ¼şÊÇ¶ÓÁĞÎª¿Õ
-		auto result = result_queue.front();  // ´Ó¶ÓÁĞÖĞµ¯³öÒ»Ïî
-		auto minterms_ptr = minterm_queue.front();
-		result_queue.pop();
-		minterm_queue.pop();
+	if (false) {
+		printf("Search Method = BFS\n");
+		// ³õÊ¼»¯ BFS µÄ¶ÓÁĞ
+		vector<forward_list<Implicant>::iterator> empty_result;
+		result_queue.push(empty_result);
+		minterm_queue.push(minterms_ptrs);
 
-		if (result.size() > min_cover_imps) {
-			continue;
+		// ÓÃ¹ã¶ÈÓÅÏÈËÑË÷¹¹½¨×îĞ¡¸²¸Ç
+		printf("Start Search...\n");
+		while (!result_queue.empty()) {  // ÖÕÖ¹Ìõ¼şÊÇ¶ÓÁĞÎª¿Õ
+			auto result = result_queue.front();  // ´Ó¶ÓÁĞÖĞµ¯³öÒ»Ïî
+			auto minterms_ptr = minterm_queue.front();
+			result_queue.pop();
+			minterm_queue.pop();
+
+			if (result.size() > cur_min_result_size) {
+				continue;
+			}
+
+			if (minterms_ptr.empty()) {  // Èç¹ûµ¯³öµÄ¸²¸Ç¿ÉÒÔÍêÈ«¸²¸ÇËùÓĞ×îĞ¡Ïî
+				cur_min_result_size = result.size();  // ½«×îĞ¡¸²¸ÇµÄ¹æÄ£ÉèÖÃÎª´Ë¸²¸ÇµÄ¹æÄ£
+				results.push_back(result);   // ÔÚ´ğ°¸ÖĞÌí¼Ó´Ë½á¹û
+				continue;
+			} else if (result.size() == cur_min_result_size) {  // ×èÖ¹Ã»ÓĞÏ£ÍûµÄ¸²¸ÇÈë¶Ó
+				continue;
+			}
+
+			for (auto next_imp : minterms_ptr.front()->covered_imps) {  // Ïò BFS ËÑË÷¶ÓÁĞÖĞ¼ÓÈë½ÓÏÂÀ´ÒªËÑË÷µÄÂ·¾¶
+				minterm_queue.emplace(minterms_ptr);
+				result_queue.emplace(result);
+				result_queue.back().push_back(next_imp);  // Ïòµ±Ç°ËÑË÷Â·¾¶ºóÌí¼ÓÒ»¸ö½áµã
+				auto erase_begin = remove_if(minterm_queue.back().begin(), minterm_queue.back().end(),
+					[next_imp](vector<Minterm>::iterator m) {return CanBeCovered(m->digs, *next_imp); });  // Çå³ıĞÂÔöµÄÕâ¸ö½áµã¿ÉÒÔ¸²¸ÇµÄËùÓĞ×îĞ¡Ïî
+				minterm_queue.back().erase(erase_begin, minterm_queue.back().end());
+			}
+		}
+	} else {  // DFS
+		printf("Search Method = DFS\n");
+
+		printf("Estimating result size");
+		int try_times = 5000 * (min(prime_imp_number, 200));
+		srand(clock());
+		for (int i = 0; i != try_times; ++i) {  // Ëæ»ú½øĞĞÈô¸É´Î³¢ÊÔ£¬¹À¼Æ×îĞ¡¸²¸ÇµÄ¹æÄ££¬Îª DFS ¼ôÖ¦
+			int cnt = 0;
+			auto mt_ptrs = minterms_ptrs;
+			while (!mt_ptrs.empty()) {
+				auto next_imp = mt_ptrs.front()->covered_imps[rand() % mt_ptrs.front()->covered_imps.size()];
+				auto erase_begin = remove_if(mt_ptrs.begin(), mt_ptrs.end(),
+					[next_imp](vector<Minterm>::iterator m) {return CanBeCovered(m->digs, *next_imp); });  // Çå³ıĞÂÔöµÄÕâ¸ö½áµã¿ÉÒÔ¸²¸ÇµÄËùÓĞ×îĞ¡Ïî
+				mt_ptrs.erase(erase_begin, mt_ptrs.end());
+				++cnt;
+			}
+			if (cnt < cur_min_result_size) {
+				cur_min_result_size = cnt;
+			}
+			if (i % 100000 == 0) { printf("."); }  // Ôö¼ÓÒ»µãÊÓ¾õĞ§¹û..
 		}
 
-		if (minterms_ptr.empty()) {  // Èç¹ûµ¯³öµÄ¸²¸Ç¿ÉÒÔÍêÈ«¸²¸ÇËùÓĞ×îĞ¡Ïî
-			min_cover_imps = result.size();  // ½«×îĞ¡¸²¸ÇµÄ¹æÄ£ÉèÖÃÎª´Ë¸²¸ÇµÄ¹æÄ£
-			results.push_back(result);   // ÔÚ´ğ°¸ÖĞÌí¼Ó´Ë½á¹û
-			continue;
-		} else if (result.size() == min_cover_imps) {  // ×èÖ¹Ã»ÓĞÏ£ÍûµÄ¸²¸ÇÈë¶Ó
-			continue;
+		// ³õÊ¼»¯ DFS µÄ¶ÓÁĞ
+		vector<forward_list<Implicant>::iterator> empty_result;
+		result_stack.push_back(empty_result);
+		minterm_stack.push_back(minterms_ptrs);
+
+		// ÓÃÉî¶ÈÓÅÏÈËÑË÷¹¹½¨×îĞ¡¸²¸Ç
+		printf("\nStart Search");
+		unsigned int i = 0;
+		while (!result_stack.empty()) {  // ÖÕÖ¹Ìõ¼şÊÇÕ»Îª¿Õ
+			auto result = result_stack.back();  // ´ÓÕ»ÖĞµ¯³öÒ»Ïî
+			auto minterms_ptr = minterm_stack.back();
+			result_stack.pop_back();
+			minterm_stack.pop_back();
+
+			if (++i % 1000000 == 0) { printf("."); }  // Ôö¼ÓÒ»µãÊÓ¾õĞ§¹û..
+
+			if (result.size() > cur_min_result_size) {
+				continue;
+			}
+
+			if (minterms_ptr.empty()) {  // Èç¹ûµ¯³öµÄ¸²¸Ç¿ÉÒÔÍêÈ«¸²¸ÇËùÓĞ×îĞ¡Ïî
+				if (result.size() < cur_min_result_size) {
+					results.clear();
+					cur_min_result_size = result.size();  // ½«×îĞ¡¸²¸ÇµÄ¹æÄ£ÉèÖÃÎª´Ë¸²¸ÇµÄ¹æÄ£
+				}
+				results.push_back(result);   // ÔÚ´ğ°¸ÖĞÌí¼Ó´Ë½á¹û
+				continue;
+			} else if (result.size() == cur_min_result_size) {  // ×èÖ¹Ã»ÓĞÏ£ÍûµÄ¸²¸ÇÈëÕ»
+				continue;
+			}
+
+			for (auto next_imp : minterms_ptr.front()->covered_imps) {  // Ïò DFS ËÑË÷Õ»ÖĞ¼ÓÈë½ÓÏÂÀ´ÒªËÑË÷µÄÂ·¾¶
+				minterm_stack.emplace_back(minterms_ptr);
+				result_stack.emplace_back(result);
+				result_stack.back().push_back(next_imp);  // Ïòµ±Ç°ËÑË÷Â·¾¶ºóÌí¼ÓÒ»¸ö½áµã
+				auto erase_begin = remove_if(minterm_stack.back().begin(), minterm_stack.back().end(),
+					[next_imp](vector<Minterm>::iterator m) {return CanBeCovered(m->digs, *next_imp); });  // Çå³ıĞÂÔöµÄÕâ¸ö½áµã¿ÉÒÔ¸²¸ÇµÄËùÓĞ×îĞ¡Ïî
+				minterm_stack.back().erase(erase_begin, minterm_stack.back().end());
+			}
 		}
-		if (result_queue.size() > 2000000) {  // Îª±ÜÃâÔËĞĞºó±¬Õ»¶øÎŞ·¨²úÉú½á¹û£¬´Ë´¦¶ÔËÑË÷¶ÓÁĞµÄ³¤¶È×öÁËÏŞÖÆ¡£ËùÒÔÈç¹û×îÖÕ½á¹ûµÄËÑË÷Á¿´óÓÚ´Ë½çÏŞµÄÊ±ºòÓĞ¿ÉÄÜÎŞ·¨Êä³öËùÓĞ½á¹û£¬»òÕß½á¹û²¢·Ç×îĞ¡¸²¸Ç
-			// printf("WARNING!\n");
-			continue;
+	}
+	printf("\n");
+}
+
+void PrintResult(int argc) {
+	for (auto result : results) {
+		for (auto term : result) {
+			term->Print(argc);
+			printf(" ");
 		}
-		for (auto next_imp : minterms_ptr.front()->covered_imps) {  // Ïò BST ËÑË÷¶ÓÁĞÖĞ¼ÓÈë½ÓÏÂÀ´ÒªËÑË÷µÄÂ·¾¶
-			minterm_queue.emplace(minterms_ptr);
-			result_queue.emplace(result);
-			result_queue.back().push_back(next_imp);  // Ïòµ±Ç°ËÑË÷Â·¾¶ºóÌí¼ÓÒ»¸ö½áµã
-			auto erase_begin = remove_if(minterm_queue.back().begin(), minterm_queue.back().end(),
-				[next_imp](vector<Minterm>::iterator m) {return CanBeCovered(m->digs, *next_imp); });  // Çå³ıĞÂÔöµÄÕâ¸ö½áµã¿ÉÒÔ¸²¸ÇµÄËùÓĞ×îĞ¡Ïî
-			minterm_queue.back().erase(erase_begin, minterm_queue.back().end());
-		}
+		printf("\n");
 	}
 }
 
 int main() {
-	// QM(2, { 0, 1, 2, 3 }, {});
-	// QM(3, { 0, 4, 5, 7 }, {});
-	// QM(4, { 1, 3, 4, 5, 6, 10, 11, 13, 14, 15 }, {});
-	vector<unsigned int> tmp;
-	vector<unsigned int> dc;
-	for (unsigned int i = 0; i != 1000; ++i) {
-		if (rand() % 10 == 0) {
-			tmp.push_back(i);
-		} else if (rand() % 20 == 0) {
-			dc.push_back(i);
+	int argc;
+	int minterm_num, dc_num;
+	vector<unsigned int> minterms, dcs;
+
+	cout << "Boolean Expression Simplifier by ma-xujie" << endl;
+	cout << "Please Input Number Of Boolean Variables:" << endl;
+	cin >> argc;
+	cout << "Please Input Number Of Minterms:" << endl;
+	cin >> minterm_num;
+	cout << "Please Input Minterms:" << endl;
+	for (int i = 0; i != minterm_num; ++i) {
+		unsigned int tmp;
+		cin >> tmp;
+		minterms.push_back(tmp);
+	}
+	cout << "Please Input Number Of Don't Care Terms:" << endl;
+	cin >> dc_num;
+	if (dc_num > 0) {
+		cout << "Please Input Don't Care Terms:" << endl;
+		for (int i = 0; i != dc_num; ++i) {
+			unsigned int tmp;
+			cin >> tmp;
+			dcs.push_back(tmp);
 		}
 	}
-	QM(10, tmp, dc);
-	for (auto x : results) {
-		for (auto t : x) {
-			t->Print(10);
-		}
-		printf("\n");
-	}
+
+	QM(argc, minterms, dcs);
+
+	cout << results.size() << " Result(s):" << endl;
+	PrintResult(argc);
 }
