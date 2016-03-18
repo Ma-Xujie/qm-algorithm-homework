@@ -10,7 +10,6 @@
 
 using namespace std;
 
-struct Minterm;
 struct Implicant {  // ‘Ã∫¨œÓ
 	inline Implicant(unsigned int d, unsigned int dc = 0U) :digs(d), dont_care(dc), isPrime(1) {}
 	unsigned int digs;
@@ -22,10 +21,10 @@ struct Implicant {  // ‘Ã∫¨œÓ
 		char buffer[100] = { 0 };
 		char *cur_char = buffer;
 		while (mask) {
-			if (mask & digs) {  // '1'
+			if (mask & digs) {
 				*cur_char = '1';
 				++cur_char;
-			} else if (mask & dont_care) {  // '-'
+			} else if (mask & dont_care) {
 				*cur_char = '-';
 				++cur_char;
 			} else {
