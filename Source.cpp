@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <string>
 #include <algorithm>
 #include <forward_list>
 #include <vector>
@@ -33,7 +34,29 @@ struct Implicant {  // ÔÌº¬Ïî
 			}
 			mask >>= 1;
 		}
-		printf("%s ", buffer);
+		printf("%s", buffer);
+	}
+
+	void PPrint(int argc) {
+		unsigned int mask = 1 << (argc - 1);
+		char buffer[100] = { 0 };
+		char *cur_char = buffer;
+		char cur_var = 'A';
+		while (mask) {
+			if (mask & digs) {
+				sprintf(cur_char, "%c", cur_var);
+				++cur_char;
+				++cur_var;
+			} else if (mask & dont_care) {
+				++cur_var;
+			} else {
+				sprintf(cur_char, "%c'", cur_var);
+				cur_char += 2;
+				++cur_var;
+			}
+			mask >>= 1;
+		}
+		printf("%s", buffer);
 	}
 };
 
@@ -58,7 +81,7 @@ inline bool CanBeCovered(unsigned m, const Implicant &imp) {  // ÅĞ¶ÏÒ»¸ö×îĞ¡ÏîÊ
 	return (m & (~imp.dont_care)) == imp.digs;
 }
 
-vector<vector<forward_list<Implicant> > > implicants;  // Implicants[ÎŞ¹ØÏî¸öÊı][1 µÄ¸öÊı]
+vector<vector<forward_list<Implicant> > > implicants;  // implicants['-'¸öÊı][1 µÄ¸öÊı]
 forward_list<Implicant> prime_implicants;  // ±¾ÖÊÔÌº¬Ïî
 vector<Minterm> minterms;  // ×îĞ¡Ïî
 vector<vector<Minterm>::iterator> minterms_ptrs;  // ×îĞ¡ÏîµÄÖ¸Õë
@@ -214,14 +237,14 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // ²¼¶ûº
 	printf("\n");
 }
 
-void PrintResults(int argc) {
-	for (auto result : results) {
-		for (auto term : result) {
-			term->Print(argc);
-			printf(" ");
+void PrintResult(int argc, const vector<forward_list<Implicant>::iterator> &result) {
+	for (int i = 0; i != result.size(); ++i) {
+		result[i]->PPrint(argc);
+		if (i != result.size() - 1) {
+			printf("+");
 		}
-		printf("\n");
 	}
+	printf("\n");
 }
 
 int main() {
@@ -229,6 +252,7 @@ int main() {
 	int minterm_num, dc_num;
 	vector<unsigned int> minterms, dcs;
 
+	// »ñÈ¡ÊäÈë
 	cout << "Boolean Expression Simplifier by ma-xujie" << endl;
 	cout << "Please Input Number Of Boolean Variables:" << endl;
 	cin >> argc;
@@ -251,8 +275,27 @@ int main() {
 		}
 	}
 
+	// ¼ÆËã
 	QM(argc, minterms, dcs);
 
-	cout << results.size() << " Result(s):" << endl;
-	PrintResults(argc);
+	// ´òÓ¡½á¹û
+	cout << "Done!" << endl;
+	cout << results.size() << " Result(s)" << endl;
+	if (results.size() == 1) {
+		PrintResult(argc, results.front());
+		return 0;
+	} else {
+		string ctrl;
+		cin.clear();
+		cin.ignore(10000000, '\n');
+		cout << "Print All Results?(Y/n)";
+		ctrl = cin.get();
+		if (ctrl == "n" || ctrl == "N") {
+			PrintResult(argc, results.front());
+		} else {
+			for (auto &result : results) {
+				PrintResult(argc, result);
+			}
+		}
+	}
 }
