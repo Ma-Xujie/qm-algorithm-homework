@@ -17,27 +17,7 @@ struct Implicant {  // ÔÌº¬Ïî
 	unsigned int dont_care;
 	bool isPrime;
 
-	void Print(int argc) {
-		unsigned int mask = 1 << (argc - 1);
-		char buffer[100] = { 0 };
-		char *cur_char = buffer;
-		while (mask) {
-			if (mask & digs) {
-				*cur_char = '1';
-				++cur_char;
-			} else if (mask & dont_care) {
-				*cur_char = '-';
-				++cur_char;
-			} else {
-				*cur_char = '0';
-				++cur_char;
-			}
-			mask >>= 1;
-		}
-		printf("%s", buffer);
-	}
-
-	void PPrint(int argc) {
+	void PPrint(int argc) {  // Pretty Print
 		unsigned int mask = 1 << (argc - 1);
 		char buffer[100] = { 0 };
 		char *cur_char = buffer;
@@ -55,6 +35,9 @@ struct Implicant {  // ÔÌº¬Ïî
 				++cur_var;
 			}
 			mask >>= 1;
+		}
+		if (strlen(buffer) == 0) {
+			sprintf(buffer, "(null)");
 		}
 		printf("%s", buffer);
 	}
@@ -165,7 +148,7 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // ²¼¶ûº
 		}
 	}
 
-	// ½«×îĞ¡Ïî°´ÕÕÄÜ¹»¸²¸ÇËüµÄ±¾ÖÊÔÌº¬ÏîµÄÊıÁ¿ÅÅĞò
+	// ½«×îĞ¡Ïî°´ÕÕÄÜ¹»¸²¸ÇËüµÄ±¾ÖÊÔÌº¬ÏîµÄÊıÁ¿ÅÅĞò£¬¾­¹ıÅÅĞòºó±¾ÖÊ±¾Ô­ÔÌº¬Ïî½«Ê×ÏÈ±»Ñ¡³ö
 	sort(minterms.begin(), minterms.end(),
 		[](const Minterm &mt1, const Minterm &mt2) {return mt1.covered_imps.size() < mt2.covered_imps.size(); });
 
@@ -176,22 +159,22 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // ²¼¶ûº
 
 	// DFS
 	printf("Estimating result size");
-	int try_times = 5000 * (min(prime_imp_number, 200));
+	int try_times = 20000 * (min(prime_imp_number, 200));
 	srand(clock());
 	for (int i = 0; i != try_times; ++i) {  // Ê×ÏÈËæ»ú½øĞĞÈô¸É´Î³¢ÊÔ£¬¹À¼Æ×îĞ¡¸²¸ÇµÄ¹æÄ££¬Îª DFS ¼ôÖ¦£¬¼Ó¿ìËÑË÷ËÙ¶È
 		int cnt = 0;
 		auto mt_ptrs = minterms_ptrs;
-		while (!mt_ptrs.empty()) {
+		while (!mt_ptrs.empty() && mt_ptrs.size() <= cur_min_result_size) {
 			auto next_imp = mt_ptrs.front()->covered_imps[rand() % mt_ptrs.front()->covered_imps.size()];
 			auto erase_begin = remove_if(mt_ptrs.begin(), mt_ptrs.end(),
 				[next_imp](vector<Minterm>::iterator m) {return CanBeCovered(m->digs, *next_imp); });  // Çå³ıĞÂÔöµÄÕâ¸ö½áµã¿ÉÒÔ¸²¸ÇµÄËùÓĞ×îĞ¡Ïî
 			mt_ptrs.erase(erase_begin, mt_ptrs.end());
 			++cnt;
 		}
-		if (cnt < cur_min_result_size) {
+		if (mt_ptrs.empty() && cnt < cur_min_result_size) {
 			cur_min_result_size = cnt;
 		}
-		if (i % 100000 == 0) { printf("."); }  // Ôö¼ÓÒ»µãÊÓ¾õĞ§¹û..
+		if (i % 1000000 == 0) { printf("."); }  // Ôö¼ÓÒ»µãÊÓ¾õĞ§¹û..
 	}
 
 	// ³õÊ¼»¯ DFS µÄ¶ÓÁĞ£¬·ÅÈëÍêÕûµÄ×îĞ¡ÏîÁĞ±íºÍ¿ÕÂ·¾¶
@@ -252,7 +235,7 @@ int main() {
 	int minterm_num, dc_num;
 	vector<unsigned int> minterms, dcs;
 
-	// »ñÈ¡ÊäÈë
+	// »ñÈ¡ÊäÈë£¬Î´×öÊäÈë¸ñÊ½¼ì²é
 	cout << "Boolean Expression Simplifier by ma-xujie" << endl;
 	cout << "Please Input Number Of Boolean Variables:" << endl;
 	cin >> argc;
@@ -283,12 +266,11 @@ int main() {
 	cout << results.size() << " Result(s)" << endl;
 	if (results.size() == 1) {
 		PrintResult(argc, results.front());
-		return 0;
 	} else {
 		string ctrl;
 		cin.clear();
 		cin.ignore(10000000, '\n');
-		cout << "Print All Results?(Y/n)";
+		cout << "Print All Results?(Y/n)\n";
 		ctrl = cin.get();
 		if (ctrl == "n" || ctrl == "N") {
 			PrintResult(argc, results.front());
