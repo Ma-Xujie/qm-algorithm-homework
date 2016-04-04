@@ -12,13 +12,12 @@
 using namespace std;
 
 struct Implicant {  // 蕴含项
-    inline Implicant(unsigned int d, unsigned int dc = 0U) : digs(d), dont_care(dc), isPrime(1) {
-    }
+    inline Implicant(unsigned int d, unsigned int dc = 0U) : digs(d), dont_care(dc), isPrime(1) {}
     unsigned int digs;
     unsigned int dont_care;
     bool isPrime;
 
-    void PPrint(int argc) {                             // Pretty Print
+    void PPrint(int argc) {  // Pretty Print
         unsigned int mask = 1 << (argc - 1);
         char buffer[100] = { 0 };
         char *cur_char = buffer;
@@ -49,7 +48,7 @@ struct Minterm {  // 最小项
     }
     unsigned int digs;
     bool covered;
-    vector<forward_list<Implicant>::iterator> covered_imps;                             // 这个最小项被此列表中的本质蕴含项覆盖
+    vector<forward_list<Implicant>::iterator> covered_imps;  // 这个最小项被此列表中的本质蕴含项覆盖
 };
 
 inline int CountOnes(unsigned int x) {  // 数一个最小项中 1 的个数
@@ -95,15 +94,15 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // 布�
         implicants[cur_dcs + 1].resize(argc - cur_dcs);
         while (cur_ones < argc - cur_dcs) {
             auto &cur_list = implicants[cur_dcs][cur_ones];
-            auto &more_one_list = implicants[cur_dcs][cur_ones + 1];                                                                                     // cur_ones + 1 最大是 argc - cur_dcs, 表示除了 dc 项以外全部是 1
+            auto &more_one_list = implicants[cur_dcs][cur_ones + 1];  // cur_ones + 1 最大是 argc - cur_dcs, 表示除了 dc 项以外全部是 1
             auto &more_dc_list = implicants[cur_dcs + 1][cur_ones];
 
             for (auto &m1 : cur_list) {
                 for (auto &m2 : more_one_list) {
                     unsigned int diff = m2.digs ^ m1.digs;
-                    if (m1.dont_care == m2.dont_care && CountOnes(diff) == 1) {                                                                                                                                             // 这里没有问题，可合并的情况下 m2 必有且仅有一位比 m1 多 1
+                    if (m1.dont_care == m2.dont_care && CountOnes(diff) == 1) {  // 这里没有问题，可合并的情况下 m2 必有且仅有一位比 m1 多 1
                         bool flag = true;
-                        for (auto imp : more_dc_list) {                                                                                                                                                                         // 去重
+                        for (auto imp : more_dc_list) {  // 去重
                             if (imp.digs == m1.digs && imp.dont_care == (m1.dont_care | diff)) {
                                 flag = false;
                                 break;
@@ -126,15 +125,15 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // 布�
     // 筛选出所有本原蕴含项
     for (auto &imp_list_list : implicants) {
         for (auto &imp_list : imp_list_list) {
-            prime_implicants.splice_after(prime_implicants.before_begin(), imp_list);                                                                                     // 首先把所有此前找到的蕴含项接成一个链表
+            prime_implicants.splice_after(prime_implicants.before_begin(), imp_list);  // 首先把所有此前找到的蕴含项接成一个链表
         }
     }
     int prime_imp_number = 0;
-    auto prev_imp_ptr = prime_implicants.begin();                             // 由于此列表的生成方式，实际上 PI.begin() 一定是本原蕴含项
+    auto prev_imp_ptr = prime_implicants.begin();  // 由于此列表的生成方式，实际上 PI.begin() 一定是本原蕴含项
     for (auto imp_ptr = prime_implicants.begin(); imp_ptr != prime_implicants.end(); ++imp_ptr) {
-        if (!imp_ptr->isPrime) {                                                         // 如果某一项不是本原蕴含项
+        if (!imp_ptr->isPrime) {  // 如果某一项不是本原蕴含项
             imp_ptr = prev_imp_ptr;
-            prime_implicants.erase_after(prev_imp_ptr);                                                                                     // 把这一项删掉
+            prime_implicants.erase_after(prev_imp_ptr);  // 把这一项删掉
         } else {
             prev_imp_ptr = imp_ptr;
             ++prime_imp_number;
@@ -165,15 +164,13 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // 布�
     printf("Estimating result size");
     int try_times = 20000 * (min(prime_imp_number, 200));
     srand(clock());
-    for (int i = 0; i != try_times; ++i) {                             // 首先随机进行若干次尝试，估计最小覆盖的规模，为 DFS 剪枝，加快搜索速度
+    for (int i = 0; i != try_times; ++i) {  // 首先随机进行若干次尝试，估计最小覆盖的规模，为 DFS 剪枝，加快搜索速度
         unsigned int cnt = 0;
         auto mt_ptrs = minterms_ptrs;
         while (!mt_ptrs.empty() && mt_ptrs.size() <= cur_min_result_size) {
             auto next_imp = mt_ptrs.front()->covered_imps[rand() % mt_ptrs.front()->covered_imps.size()];
             auto erase_begin = remove_if(mt_ptrs.begin(), mt_ptrs.end(),
-                                         [next_imp](vector<Minterm>::iterator m) {
-                return CanBeCovered(m->digs, *next_imp);
-            });                                                                                                                                                    // 清除新增的这个结点可以覆盖的所有最小项
+                                         [next_imp](vector<Minterm>::iterator m) {return CanBeCovered(m->digs, *next_imp);});  // 清除新增的这个结点可以覆盖的所有最小项
             mt_ptrs.erase(erase_begin, mt_ptrs.end());
             ++cnt;
         }
@@ -182,7 +179,7 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // 布�
         }
         if (i % 1000000 == 0) {
             printf(".");
-        }                                                                                              // 增加一点视觉效果..
+        }  // 增加一点视觉效果..
     }
 
     // 初始化 DFS 的队列，放入完整的最小项列表和空路径
@@ -193,39 +190,37 @@ void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // 布�
     // 用深度优先搜索构建最小覆盖
     printf("\nStart Search");
     unsigned int i = 0;
-    while (!result_stack.empty()) {                             // 终止条件是栈为空，保证了能找到所有最小覆盖
+    while (!result_stack.empty()) {  // 终止条件是栈为空，保证了能找到所有最小覆盖
         if (++i % 1000000 == 0) {
             printf(".");
-        }                                                                                                // 增加一点视觉效果..
+        }  // 增加一点视觉效果..
 
-        auto result = result_stack.back();                                                         // 从栈中弹出一项作为当前要搜索的路径
+        auto result = result_stack.back();  // 从栈中弹出一项作为当前要搜索的路径
         auto minterms_ptr = minterm_stack.back();
         result_stack.pop_back();
         minterm_stack.pop_back();
 
-        if (result.size() > cur_min_result_size) {                                                         // 如果该路径的长度已经超过已知的最小覆盖规模，则放弃这一路径
+        if (result.size() > cur_min_result_size) {  // 如果该路径的长度已经超过已知的最小覆盖规模，则放弃这一路径
             continue;
         }
 
-        if (minterms_ptr.empty()) {                                                         // 如果弹出的路径可以完全覆盖所有最小项
-            if (result.size() < cur_min_result_size) {                                                                                     // 并且其规模小于已知最小覆盖规模
-                results.clear();                                                                                                                 // 放弃此前已经找到的结果
-                cur_min_result_size = result.size();                                                                                                                 // 将最小覆盖的规模设置为此覆盖的规模
+        if (minterms_ptr.empty()) {  // 如果弹出的路径可以完全覆盖所有最小项
+            if (result.size() < cur_min_result_size) {  // 并且其规模小于已知最小覆盖规模
+                results.clear();  // 放弃此前已经找到的结果
+                cur_min_result_size = result.size();  // 将最小覆盖的规模设置为此覆盖的规模
             }
-            results.push_back(result);                                                                                     // 在答案中添加此结果
+            results.push_back(result);  // 在答案中添加此结果
             continue;
-        } else if (result.size() == cur_min_result_size) {                                                         // 阻止没有希望的覆盖入栈
+        } else if (result.size() == cur_min_result_size) {  // 阻止没有希望的覆盖入栈
             continue;
         }
 
-        for (auto next_imp : minterms_ptr.front()->covered_imps) {                                                         // 向 DFS 搜索栈中加入接下来要搜索的路径
+        for (auto next_imp : minterms_ptr.front()->covered_imps) {  // 向 DFS 搜索栈中加入接下来要搜索的路径
             minterm_stack.emplace_back(minterms_ptr);
             result_stack.emplace_back(result);
-            result_stack.back().push_back(next_imp);                                                                                     // 向当前搜索路径后添加一个结点
+            result_stack.back().push_back(next_imp);  // 向当前搜索路径后添加一个结点
             auto erase_begin = remove_if(minterm_stack.back().begin(), minterm_stack.back().end(),
-                                         [next_imp](vector<Minterm>::iterator m) {
-                return CanBeCovered(m->digs, *next_imp);
-            });                                                                                                                                                    // 并清除新增的这个结点可以覆盖的所有最小项
+                                         [next_imp](vector<Minterm>::iterator m) {return CanBeCovered(m->digs, *next_imp);});  // 并清除新增的这个结点可以覆盖的所有最小项
             minterm_stack.back().erase(erase_begin, minterm_stack.back().end());
         }
     }
