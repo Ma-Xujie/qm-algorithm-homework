@@ -11,273 +11,285 @@
 
 using namespace std;
 
-struct Implicant {  // ÔÌº¬Ïî
-	inline Implicant(unsigned int d, unsigned int dc = 0U) :digs(d), dont_care(dc), isPrime(1) {}
-	unsigned int digs;
-	unsigned int dont_care;
-	bool isPrime;
+struct Implicant {  // è•´å«é¡¹
+    inline Implicant(unsigned int d, unsigned int dc = 0U) : digs(d), dont_care(dc), isPrime(1) {
+    }
+    unsigned int digs;
+    unsigned int dont_care;
+    bool isPrime;
 
-	void PPrint(int argc) {  // Pretty Print
-		unsigned int mask = 1 << (argc - 1);
-		char buffer[100] = { 0 };
-		char *cur_char = buffer;
-		char cur_var = 'A';
-		while (mask) {
-			if (mask & digs) {
-				sprintf(cur_char, "%c", cur_var);
-				++cur_char;
-				++cur_var;
-			} else if (mask & dont_care) {
-				++cur_var;
-			} else {
-				sprintf(cur_char, "%c'", cur_var);
-				cur_char += 2;
-				++cur_var;
-			}
-			mask >>= 1;
-		}
-		if (strlen(buffer) == 0) {
-			sprintf(buffer, "(null)");
-		}
-		printf("%s", buffer);
-	}
+    void PPrint(int argc) {                             // Pretty Print
+        unsigned int mask = 1 << (argc - 1);
+        char buffer[100] = { 0 };
+        char *cur_char = buffer;
+        char cur_var = 'A';
+        while (mask) {
+            if (mask & digs) {
+                sprintf(cur_char, "%c", cur_var);
+                ++cur_char;
+                ++cur_var;
+            } else if (mask & dont_care) {
+                ++cur_var;
+            } else {
+                sprintf(cur_char, "%c'", cur_var);
+                cur_char += 2;
+                ++cur_var;
+            }
+            mask >>= 1;
+        }
+        if (strlen(buffer) == 0) {
+            sprintf(buffer, "(null)");
+        }
+        printf("%s", buffer);
+    }
 };
 
-struct Minterm {  // ×îĞ¡Ïî
-	inline Minterm(unsigned int d) :digs(d), covered(false) {}
-	unsigned int digs;
-	bool covered;
-	vector<forward_list<Implicant>::iterator> covered_imps;  // Õâ¸ö×îĞ¡Ïî±»´ËÁĞ±íÖĞµÄ±¾ÖÊÔÌº¬Ïî¸²¸Ç
+struct Minterm {  // æœ€å°é¡¹
+    inline Minterm(unsigned int d) : digs(d), covered(false) {
+    }
+    unsigned int digs;
+    bool covered;
+    vector<forward_list<Implicant>::iterator> covered_imps;                             // è¿™ä¸ªæœ€å°é¡¹è¢«æ­¤åˆ—è¡¨ä¸­çš„æœ¬è´¨è•´å«é¡¹è¦†ç›–
 };
 
-inline int CountOnes(unsigned int x) {  // ÊıÒ»¸ö×îĞ¡ÏîÖĞ 1 µÄ¸öÊı
-	unsigned int mask = 1;
-	int counter = 0;
-	while (mask) {
-		counter += ((x & mask) > 0);
-		mask <<= 1;
-	}
-	return counter;
+inline int CountOnes(unsigned int x) {  // æ•°ä¸€ä¸ªæœ€å°é¡¹ä¸­ 1 çš„ä¸ªæ•°
+    unsigned int mask = 1;
+    int counter = 0;
+    while (mask) {
+        counter += ((x & mask) > 0);
+        mask <<= 1;
+    }
+    return counter;
 }
 
-inline bool CanBeCovered(unsigned m, const Implicant &imp) {  // ÅĞ¶ÏÒ»¸ö×îĞ¡ÏîÊÇ·ñ¿ÉÒÔ±»Ò»¸öÔÌº¬Ïî¸²¸Ç
-	return (m & (~imp.dont_care)) == imp.digs;
+inline bool CanBeCovered(unsigned m, const Implicant &imp) {  // åˆ¤æ–­ä¸€ä¸ªæœ€å°é¡¹æ˜¯å¦å¯ä»¥è¢«ä¸€ä¸ªè•´å«é¡¹è¦†ç›–
+    return (m & (~imp.dont_care)) == imp.digs;
 }
 
-vector<vector<forward_list<Implicant> > > implicants;  // implicants['-'¸öÊı][1 µÄ¸öÊı]
-forward_list<Implicant> prime_implicants;  // ±¾ÖÊÔÌº¬Ïî
-vector<Minterm> minterms;  // ×îĞ¡Ïî
-vector<vector<Minterm>::iterator> minterms_ptrs;  // ×îĞ¡ÏîµÄÖ¸Õë
-int cur_min_result_size = 2147483647;  // µ±Ç°ÒÑ¾­ÕÒµ½µÄ×îĞ¡¸²¸ÇµÄ¹æÄ££¬ÓÃÕâ¸ö²ÎÊıÀ´¸ø DFS ËÑË÷Ê÷¼ôÖ¦
-vector<vector<forward_list<Implicant>::iterator> > results;  // ½á¹û
-vector<vector<forward_list<Implicant>::iterator> > result_stack;  // DFS ²éÕÒ½á¹ûÊ±ËùÓÃµÄÕ»
-vector<vector<vector<Minterm>::iterator > > minterm_stack;  // Í¬ÉÏ
+vector<vector<forward_list<Implicant> > > implicants;  // implicants['-'ä¸ªæ•°][1 çš„ä¸ªæ•°]
+forward_list<Implicant> prime_implicants;  // æœ¬è´¨è•´å«é¡¹
+vector<Minterm> minterms;  // æœ€å°é¡¹
+vector<vector<Minterm>::iterator> minterms_ptrs;  // æœ€å°é¡¹çš„æŒ‡é’ˆ
+unsigned cur_min_result_size = 4294967295;  // å½“å‰å·²ç»æ‰¾åˆ°çš„æœ€å°è¦†ç›–çš„è§„æ¨¡ï¼Œç”¨è¿™ä¸ªå‚æ•°æ¥ç»™ DFS æœç´¢æ ‘å‰ªæ
+vector<vector<forward_list<Implicant>::iterator> > results;  // ç»“æœ
+vector<vector<forward_list<Implicant>::iterator> > result_stack;  // DFS æŸ¥æ‰¾ç»“æœæ—¶æ‰€ç”¨çš„æ ˆ
+vector<vector<vector<Minterm>::iterator > > minterm_stack;  // åŒä¸Š
 
-void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // ²¼¶ûº¯ÊıµÄ²ÎÊıÊıÁ¿ & ×îĞ¡Ïî & ÎŞ¹ØÏî
-	implicants.resize(argc + 1);
-	implicants[0].resize(argc + 1);
-	implicants[1].resize(argc);
+void QM(int argc, vector<unsigned int> ms, vector<unsigned int> dcs) {  // å¸ƒå°”å‡½æ•°çš„å‚æ•°æ•°é‡ & æœ€å°é¡¹ & æ— å…³é¡¹
+    implicants.resize(argc + 1);
+    implicants[0].resize(argc + 1);
+    implicants[1].resize(argc);
 
-	// ³õÊ¼»¯
-	for (auto m : ms) {
-		implicants[0][CountOnes(m)].emplace_front(m);
-		minterms.emplace_back(m);
-	}
-	for (auto dc : dcs) {
-		implicants[0][CountOnes(dc)].emplace_front(dc);
-	}
+    // åˆå§‹åŒ–
+    for (auto m : ms) {
+        implicants[0][CountOnes(m)].emplace_front(m);
+        minterms.emplace_back(m);
+    }
+    for (auto dc : dcs) {
+        implicants[0][CountOnes(dc)].emplace_front(dc);
+    }
 
-	// ºÏ²¢ÔÌº¬Ïî
-	int cur_ones = 0, cur_dcs = 0;
-	while (cur_dcs < argc) {
-		implicants[cur_dcs + 1].resize(argc - cur_dcs);
-		while (cur_ones < argc - cur_dcs) {
-			auto &cur_list = implicants[cur_dcs][cur_ones];
-			auto &more_one_list = implicants[cur_dcs][cur_ones + 1];  // cur_ones + 1 ×î´óÊÇ argc - cur_dcs, ±íÊ¾³ıÁË dc ÏîÒÔÍâÈ«²¿ÊÇ 1
-			auto &more_dc_list = implicants[cur_dcs + 1][cur_ones];
+    // åˆå¹¶è•´å«é¡¹
+    int cur_ones = 0, cur_dcs = 0;
+    while (cur_dcs < argc) {
+        implicants[cur_dcs + 1].resize(argc - cur_dcs);
+        while (cur_ones < argc - cur_dcs) {
+            auto &cur_list = implicants[cur_dcs][cur_ones];
+            auto &more_one_list = implicants[cur_dcs][cur_ones + 1];                                                                                     // cur_ones + 1 æœ€å¤§æ˜¯ argc - cur_dcs, è¡¨ç¤ºé™¤äº† dc é¡¹ä»¥å¤–å…¨éƒ¨æ˜¯ 1
+            auto &more_dc_list = implicants[cur_dcs + 1][cur_ones];
 
-			for (auto &m1 : cur_list) {
-				for (auto &m2 : more_one_list) {
-					unsigned int diff = m2.digs ^ m1.digs;
-					if (m1.dont_care == m2.dont_care && CountOnes(diff) == 1) { // ÕâÀïÃ»ÓĞÎÊÌâ£¬¿ÉºÏ²¢µÄÇé¿öÏÂ m2 ±ØÓĞÇÒ½öÓĞÒ»Î»±È m1 ¶à 1
-						bool flag = true;
-						for (auto imp : more_dc_list) {  // È¥ÖØ
-							if (imp.digs == m1.digs && imp.dont_care == (m1.dont_care | diff)) {
-								flag = false;
-								break;
-							}
-						}
-						if (flag) {
-							more_dc_list.emplace_front(m1.digs, (m1.dont_care | diff));
-							m1.isPrime = false;
-							m2.isPrime = false;
-						}
-					}
-				}
-			}
-			++cur_ones;
-		}
-		++cur_dcs;
-		cur_ones = 0;
-	}
+            for (auto &m1 : cur_list) {
+                for (auto &m2 : more_one_list) {
+                    unsigned int diff = m2.digs ^ m1.digs;
+                    if (m1.dont_care == m2.dont_care && CountOnes(diff) == 1) {                                                                                                                                             // è¿™é‡Œæ²¡æœ‰é—®é¢˜ï¼Œå¯åˆå¹¶çš„æƒ…å†µä¸‹ m2 å¿…æœ‰ä¸”ä»…æœ‰ä¸€ä½æ¯” m1 å¤š 1
+                        bool flag = true;
+                        for (auto imp : more_dc_list) {                                                                                                                                                                         // å»é‡
+                            if (imp.digs == m1.digs && imp.dont_care == (m1.dont_care | diff)) {
+                                flag = false;
+                                break;
+                            }
+                        }
+                        if (flag) {
+                            more_dc_list.emplace_front(m1.digs, (m1.dont_care | diff));
+                            m1.isPrime = false;
+                            m2.isPrime = false;
+                        }
+                    }
+                }
+            }
+            ++cur_ones;
+        }
+        ++cur_dcs;
+        cur_ones = 0;
+    }
 
-	// É¸Ñ¡³öËùÓĞ±¾Ô­ÔÌº¬Ïî
-	for (auto &imp_list_list : implicants) {
-		for (auto &imp_list : imp_list_list) {
-			prime_implicants.splice_after(prime_implicants.before_begin(), imp_list);  // Ê×ÏÈ°ÑËùÓĞ´ËÇ°ÕÒµ½µÄÔÌº¬Ïî½Ó³ÉÒ»¸öÁ´±í
-		}
-	}
-	int prime_imp_number = 0;
-	auto prev_imp_ptr = prime_implicants.begin(); // ÓÉÓÚ´ËÁĞ±íµÄÉú³É·½Ê½£¬Êµ¼ÊÉÏ PI.begin() Ò»¶¨ÊÇ±¾Ô­ÔÌº¬Ïî
-	for (auto imp_ptr = prime_implicants.begin(); imp_ptr != prime_implicants.end(); ++imp_ptr) {
-		if (!imp_ptr->isPrime) {  // Èç¹ûÄ³Ò»Ïî²»ÊÇ±¾Ô­ÔÌº¬Ïî
-			imp_ptr = prev_imp_ptr;
-			prime_implicants.erase_after(prev_imp_ptr);  // °ÑÕâÒ»ÏîÉ¾µô
-		} else {
-			prev_imp_ptr = imp_ptr;
-			++prime_imp_number;
-		}
-	}
+    // ç­›é€‰å‡ºæ‰€æœ‰æœ¬åŸè•´å«é¡¹
+    for (auto &imp_list_list : implicants) {
+        for (auto &imp_list : imp_list_list) {
+            prime_implicants.splice_after(prime_implicants.before_begin(), imp_list);                                                                                     // é¦–å…ˆæŠŠæ‰€æœ‰æ­¤å‰æ‰¾åˆ°çš„è•´å«é¡¹æ¥æˆä¸€ä¸ªé“¾è¡¨
+        }
+    }
+    int prime_imp_number = 0;
+    auto prev_imp_ptr = prime_implicants.begin();                             // ç”±äºæ­¤åˆ—è¡¨çš„ç”Ÿæˆæ–¹å¼ï¼Œå®é™…ä¸Š PI.begin() ä¸€å®šæ˜¯æœ¬åŸè•´å«é¡¹
+    for (auto imp_ptr = prime_implicants.begin(); imp_ptr != prime_implicants.end(); ++imp_ptr) {
+        if (!imp_ptr->isPrime) {                                                         // å¦‚æœæŸä¸€é¡¹ä¸æ˜¯æœ¬åŸè•´å«é¡¹
+            imp_ptr = prev_imp_ptr;
+            prime_implicants.erase_after(prev_imp_ptr);                                                                                     // æŠŠè¿™ä¸€é¡¹åˆ æ‰
+        } else {
+            prev_imp_ptr = imp_ptr;
+            ++prime_imp_number;
+        }
+    }
 
-	// ½«Ã¿¸ö×îĞ¡ÏîÓëÄÜ¸²¸Ç¸Ã×îĞ¡ÏîµÄËùÓĞ±¾ÖÊÔÌº¬Ïî½¨Á¢¶ÔÓ¦¹ØÏµ
-	for (auto &minterm : minterms) {
-		for (auto imp = prime_implicants.begin(); imp != prime_implicants.end(); ++imp) {
-			if (CanBeCovered(minterm.digs, *imp)) {
-				minterm.covered_imps.push_back(imp);
-			}
-		}
-	}
+    // å°†æ¯ä¸ªæœ€å°é¡¹ä¸èƒ½è¦†ç›–è¯¥æœ€å°é¡¹çš„æ‰€æœ‰æœ¬è´¨è•´å«é¡¹å»ºç«‹å¯¹åº”å…³ç³»
+    for (auto &minterm : minterms) {
+        for (auto imp = prime_implicants.begin(); imp != prime_implicants.end(); ++imp) {
+            if (CanBeCovered(minterm.digs, *imp)) {
+                minterm.covered_imps.push_back(imp);
+            }
+        }
+    }
 
-	// ½«×îĞ¡Ïî°´ÕÕÄÜ¹»¸²¸ÇËüµÄ±¾ÖÊÔÌº¬ÏîµÄÊıÁ¿ÅÅĞò£¬¾­¹ıÅÅĞòºó±¾ÖÊ±¾Ô­ÔÌº¬Ïî½«Ê×ÏÈ±»Ñ¡³ö
-	sort(minterms.begin(), minterms.end(),
-		[](const Minterm &mt1, const Minterm &mt2) {return mt1.covered_imps.size() < mt2.covered_imps.size(); });
+    // å°†æœ€å°é¡¹æŒ‰ç…§èƒ½å¤Ÿè¦†ç›–å®ƒçš„æœ¬è´¨è•´å«é¡¹çš„æ•°é‡æ’åºï¼Œç»è¿‡æ’åºåæœ¬è´¨æœ¬åŸè•´å«é¡¹å°†é¦–å…ˆè¢«é€‰å‡º
+    sort(minterms.begin(), minterms.end(),
+         [](const Minterm &mt1, const Minterm &mt2) {
+        return mt1.covered_imps.size() < mt2.covered_imps.size();
+    });
 
-	// Îª±ÜÃâÔÚ½ÓÏÂÀ´µÄËÑË÷ÖĞ¶à´Î¸´ÖÆ×îĞ¡Ïî£¬ÔÚËÑË÷ÖĞÖ»Ê¹ÓÃ×îĞ¡ÏîµÄÖ¸Õë
-	for (auto ptr = minterms.begin(); ptr != minterms.end(); ++ptr) {
-		minterms_ptrs.push_back(ptr);
-	}
+    // ä¸ºé¿å…åœ¨æ¥ä¸‹æ¥çš„æœç´¢ä¸­å¤šæ¬¡å¤åˆ¶æœ€å°é¡¹ï¼Œåœ¨æœç´¢ä¸­åªä½¿ç”¨æœ€å°é¡¹çš„æŒ‡é’ˆ
+    for (auto ptr = minterms.begin(); ptr != minterms.end(); ++ptr) {
+        minterms_ptrs.push_back(ptr);
+    }
 
-	// DFS
-	printf("Estimating result size");
-	int try_times = 20000 * (min(prime_imp_number, 200));
-	srand(clock());
-	for (int i = 0; i != try_times; ++i) {  // Ê×ÏÈËæ»ú½øĞĞÈô¸É´Î³¢ÊÔ£¬¹À¼Æ×îĞ¡¸²¸ÇµÄ¹æÄ££¬Îª DFS ¼ôÖ¦£¬¼Ó¿ìËÑË÷ËÙ¶È
-		int cnt = 0;
-		auto mt_ptrs = minterms_ptrs;
-		while (!mt_ptrs.empty() && mt_ptrs.size() <= cur_min_result_size) {
-			auto next_imp = mt_ptrs.front()->covered_imps[rand() % mt_ptrs.front()->covered_imps.size()];
-			auto erase_begin = remove_if(mt_ptrs.begin(), mt_ptrs.end(),
-				[next_imp](vector<Minterm>::iterator m) {return CanBeCovered(m->digs, *next_imp); });  // Çå³ıĞÂÔöµÄÕâ¸ö½áµã¿ÉÒÔ¸²¸ÇµÄËùÓĞ×îĞ¡Ïî
-			mt_ptrs.erase(erase_begin, mt_ptrs.end());
-			++cnt;
-		}
-		if (mt_ptrs.empty() && cnt < cur_min_result_size) {
-			cur_min_result_size = cnt;
-		}
-		if (i % 1000000 == 0) { printf("."); }  // Ôö¼ÓÒ»µãÊÓ¾õĞ§¹û..
-	}
+    // DFS
+    printf("Estimating result size");
+    int try_times = 20000 * (min(prime_imp_number, 200));
+    srand(clock());
+    for (int i = 0; i != try_times; ++i) {                             // é¦–å…ˆéšæœºè¿›è¡Œè‹¥å¹²æ¬¡å°è¯•ï¼Œä¼°è®¡æœ€å°è¦†ç›–çš„è§„æ¨¡ï¼Œä¸º DFS å‰ªæï¼ŒåŠ å¿«æœç´¢é€Ÿåº¦
+        unsigned int cnt = 0;
+        auto mt_ptrs = minterms_ptrs;
+        while (!mt_ptrs.empty() && mt_ptrs.size() <= cur_min_result_size) {
+            auto next_imp = mt_ptrs.front()->covered_imps[rand() % mt_ptrs.front()->covered_imps.size()];
+            auto erase_begin = remove_if(mt_ptrs.begin(), mt_ptrs.end(),
+                                         [next_imp](vector<Minterm>::iterator m) {
+                return CanBeCovered(m->digs, *next_imp);
+            });                                                                                                                                                    // æ¸…é™¤æ–°å¢çš„è¿™ä¸ªç»“ç‚¹å¯ä»¥è¦†ç›–çš„æ‰€æœ‰æœ€å°é¡¹
+            mt_ptrs.erase(erase_begin, mt_ptrs.end());
+            ++cnt;
+        }
+        if (mt_ptrs.empty() && cnt < cur_min_result_size) {
+            cur_min_result_size = cnt;
+        }
+        if (i % 1000000 == 0) {
+            printf(".");
+        }                                                                                              // å¢åŠ ä¸€ç‚¹è§†è§‰æ•ˆæœ..
+    }
 
-	// ³õÊ¼»¯ DFS µÄ¶ÓÁĞ£¬·ÅÈëÍêÕûµÄ×îĞ¡ÏîÁĞ±íºÍ¿ÕÂ·¾¶
-	vector<forward_list<Implicant>::iterator> empty_result;
-	result_stack.push_back(empty_result);
-	minterm_stack.push_back(minterms_ptrs);
+    // åˆå§‹åŒ– DFS çš„é˜Ÿåˆ—ï¼Œæ”¾å…¥å®Œæ•´çš„æœ€å°é¡¹åˆ—è¡¨å’Œç©ºè·¯å¾„
+    vector<forward_list<Implicant>::iterator> empty_result;
+    result_stack.push_back(empty_result);
+    minterm_stack.push_back(minterms_ptrs);
 
-	// ÓÃÉî¶ÈÓÅÏÈËÑË÷¹¹½¨×îĞ¡¸²¸Ç
-	printf("\nStart Search");
-	unsigned int i = 0;
-	while (!result_stack.empty()) {  // ÖÕÖ¹Ìõ¼şÊÇÕ»Îª¿Õ£¬±£Ö¤ÁËÄÜÕÒµ½ËùÓĞ×îĞ¡¸²¸Ç
-		if (++i % 1000000 == 0) { printf("."); }  // Ôö¼ÓÒ»µãÊÓ¾õĞ§¹û..
+    // ç”¨æ·±åº¦ä¼˜å…ˆæœç´¢æ„å»ºæœ€å°è¦†ç›–
+    printf("\nStart Search");
+    unsigned int i = 0;
+    while (!result_stack.empty()) {                             // ç»ˆæ­¢æ¡ä»¶æ˜¯æ ˆä¸ºç©ºï¼Œä¿è¯äº†èƒ½æ‰¾åˆ°æ‰€æœ‰æœ€å°è¦†ç›–
+        if (++i % 1000000 == 0) {
+            printf(".");
+        }                                                                                                // å¢åŠ ä¸€ç‚¹è§†è§‰æ•ˆæœ..
 
-		auto result = result_stack.back();  // ´ÓÕ»ÖĞµ¯³öÒ»Ïî×÷Îªµ±Ç°ÒªËÑË÷µÄÂ·¾¶
-		auto minterms_ptr = minterm_stack.back();
-		result_stack.pop_back();
-		minterm_stack.pop_back();
+        auto result = result_stack.back();                                                         // ä»æ ˆä¸­å¼¹å‡ºä¸€é¡¹ä½œä¸ºå½“å‰è¦æœç´¢çš„è·¯å¾„
+        auto minterms_ptr = minterm_stack.back();
+        result_stack.pop_back();
+        minterm_stack.pop_back();
 
-		if (result.size() > cur_min_result_size) {  // Èç¹û¸ÃÂ·¾¶µÄ³¤¶ÈÒÑ¾­³¬¹ıÒÑÖªµÄ×îĞ¡¸²¸Ç¹æÄ££¬Ôò·ÅÆúÕâÒ»Â·¾¶
-			continue;
-		}
+        if (result.size() > cur_min_result_size) {                                                         // å¦‚æœè¯¥è·¯å¾„çš„é•¿åº¦å·²ç»è¶…è¿‡å·²çŸ¥çš„æœ€å°è¦†ç›–è§„æ¨¡ï¼Œåˆ™æ”¾å¼ƒè¿™ä¸€è·¯å¾„
+            continue;
+        }
 
-		if (minterms_ptr.empty()) {  // Èç¹ûµ¯³öµÄÂ·¾¶¿ÉÒÔÍêÈ«¸²¸ÇËùÓĞ×îĞ¡Ïî
-			if (result.size() < cur_min_result_size) {  // ²¢ÇÒÆä¹æÄ£Ğ¡ÓÚÒÑÖª×îĞ¡¸²¸Ç¹æÄ£
-				results.clear();  // ·ÅÆú´ËÇ°ÒÑ¾­ÕÒµ½µÄ½á¹û
-				cur_min_result_size = result.size();  // ½«×îĞ¡¸²¸ÇµÄ¹æÄ£ÉèÖÃÎª´Ë¸²¸ÇµÄ¹æÄ£
-			}
-			results.push_back(result);   // ÔÚ´ğ°¸ÖĞÌí¼Ó´Ë½á¹û
-			continue;
-		} else if (result.size() == cur_min_result_size) {  // ×èÖ¹Ã»ÓĞÏ£ÍûµÄ¸²¸ÇÈëÕ»
-			continue;
-		}
+        if (minterms_ptr.empty()) {                                                         // å¦‚æœå¼¹å‡ºçš„è·¯å¾„å¯ä»¥å®Œå…¨è¦†ç›–æ‰€æœ‰æœ€å°é¡¹
+            if (result.size() < cur_min_result_size) {                                                                                     // å¹¶ä¸”å…¶è§„æ¨¡å°äºå·²çŸ¥æœ€å°è¦†ç›–è§„æ¨¡
+                results.clear();                                                                                                                 // æ”¾å¼ƒæ­¤å‰å·²ç»æ‰¾åˆ°çš„ç»“æœ
+                cur_min_result_size = result.size();                                                                                                                 // å°†æœ€å°è¦†ç›–çš„è§„æ¨¡è®¾ç½®ä¸ºæ­¤è¦†ç›–çš„è§„æ¨¡
+            }
+            results.push_back(result);                                                                                     // åœ¨ç­”æ¡ˆä¸­æ·»åŠ æ­¤ç»“æœ
+            continue;
+        } else if (result.size() == cur_min_result_size) {                                                         // é˜»æ­¢æ²¡æœ‰å¸Œæœ›çš„è¦†ç›–å…¥æ ˆ
+            continue;
+        }
 
-		for (auto next_imp : minterms_ptr.front()->covered_imps) {  // Ïò DFS ËÑË÷Õ»ÖĞ¼ÓÈë½ÓÏÂÀ´ÒªËÑË÷µÄÂ·¾¶
-			minterm_stack.emplace_back(minterms_ptr);
-			result_stack.emplace_back(result);
-			result_stack.back().push_back(next_imp);  // Ïòµ±Ç°ËÑË÷Â·¾¶ºóÌí¼ÓÒ»¸ö½áµã
-			auto erase_begin = remove_if(minterm_stack.back().begin(), minterm_stack.back().end(),
-				[next_imp](vector<Minterm>::iterator m) {return CanBeCovered(m->digs, *next_imp); });  // ²¢Çå³ıĞÂÔöµÄÕâ¸ö½áµã¿ÉÒÔ¸²¸ÇµÄËùÓĞ×îĞ¡Ïî
-			minterm_stack.back().erase(erase_begin, minterm_stack.back().end());
-		}
-	}
-	printf("\n");
+        for (auto next_imp : minterms_ptr.front()->covered_imps) {                                                         // å‘ DFS æœç´¢æ ˆä¸­åŠ å…¥æ¥ä¸‹æ¥è¦æœç´¢çš„è·¯å¾„
+            minterm_stack.emplace_back(minterms_ptr);
+            result_stack.emplace_back(result);
+            result_stack.back().push_back(next_imp);                                                                                     // å‘å½“å‰æœç´¢è·¯å¾„åæ·»åŠ ä¸€ä¸ªç»“ç‚¹
+            auto erase_begin = remove_if(minterm_stack.back().begin(), minterm_stack.back().end(),
+                                         [next_imp](vector<Minterm>::iterator m) {
+                return CanBeCovered(m->digs, *next_imp);
+            });                                                                                                                                                    // å¹¶æ¸…é™¤æ–°å¢çš„è¿™ä¸ªç»“ç‚¹å¯ä»¥è¦†ç›–çš„æ‰€æœ‰æœ€å°é¡¹
+            minterm_stack.back().erase(erase_begin, minterm_stack.back().end());
+        }
+    }
+    printf("\n");
 }
 
 void PrintResult(int argc, const vector<forward_list<Implicant>::iterator> &result) {
-	for (int i = 0; i != result.size(); ++i) {
-		result[i]->PPrint(argc);
-		if (i != result.size() - 1) {
-			printf("+");
-		}
-	}
-	printf("\n");
+    for (size_t i = 0; i != result.size(); ++i) {
+        result[i]->PPrint(argc);
+        if (i != result.size() - 1) {
+            printf("+");
+        }
+    }
+    printf("\n");
 }
 
 int main() {
-	int argc;
-	int minterm_num, dc_num;
-	vector<unsigned int> minterms, dcs;
+    int argc;
+    int minterm_num, dc_num;
+    vector<unsigned int> minterms, dcs;
 
-	// »ñÈ¡ÊäÈë£¬Î´×öÊäÈë¸ñÊ½¼ì²é
-	cout << "Boolean Expression Simplifier by ma-xujie" << endl;
-	cout << "Please Input Number Of Boolean Variables:" << endl;
-	cin >> argc;
-	cout << "Please Input Number Of Minterms:" << endl;
-	cin >> minterm_num;
-	cout << "Please Input Minterms:" << endl;
-	for (int i = 0; i != minterm_num; ++i) {
-		unsigned int tmp;
-		cin >> tmp;
-		minterms.push_back(tmp);
-	}
-	cout << "Please Input Number Of Don't Care Terms:" << endl;
-	cin >> dc_num;
-	if (dc_num > 0) {
-		cout << "Please Input Don't Care Terms:" << endl;
-		for (int i = 0; i != dc_num; ++i) {
-			unsigned int tmp;
-			cin >> tmp;
-			dcs.push_back(tmp);
-		}
-	}
+    // è·å–è¾“å…¥ï¼Œæœªåšè¾“å…¥æ ¼å¼æ£€æŸ¥
+    cout << "Boolean Expression Simplifier by ma-xujie" << endl;
+    cout << "Please Input Number Of Boolean Variables:" << endl;
+    cin >> argc;
+    cout << "Please Input Number Of Minterms:" << endl;
+    cin >> minterm_num;
+    cout << "Please Input Minterms:" << endl;
+    for (int i = 0; i != minterm_num; ++i) {
+        unsigned int tmp;
+        cin >> tmp;
+        minterms.push_back(tmp);
+    }
+    cout << "Please Input Number Of Don't Care Terms:" << endl;
+    cin >> dc_num;
+    if (dc_num > 0) {
+        cout << "Please Input Don't Care Terms:" << endl;
+        for (int i = 0; i != dc_num; ++i) {
+            unsigned int tmp;
+            cin >> tmp;
+            dcs.push_back(tmp);
+        }
+    }
 
-	// ¼ÆËã
-	QM(argc, minterms, dcs);
+    // è®¡ç®—
+    QM(argc, minterms, dcs);
 
-	// ´òÓ¡½á¹û
-	cout << "Done!" << endl;
-	cout << results.size() << " Result(s)" << endl;
-	if (results.size() == 1) {
-		PrintResult(argc, results.front());
-	} else {
-		string ctrl;
-		cin.clear();
-		cin.ignore(10000000, '\n');
-		cout << "Print All Results?(Y/n)\n";
-		ctrl = cin.get();
-		if (ctrl == "n" || ctrl == "N") {
-			PrintResult(argc, results.front());
-		} else {
-			for (auto &result : results) {
-				PrintResult(argc, result);
-			}
-		}
-	}
+    // æ‰“å°ç»“æœ
+    cout << "Done!" << endl;
+    cout << results.size() << " Result(s)" << endl;
+    if (results.size() == 1) {
+        PrintResult(argc, results.front());
+    } else {
+        string ctrl;
+        cin.clear();
+        cin.ignore(10000000, '\n');
+        cout << "Print All Results?(Y/n)\n";
+        ctrl = cin.get();
+        if (ctrl == "n" || ctrl == "N") {
+            PrintResult(argc, results.front());
+        } else {
+            for (auto &result : results) {
+                PrintResult(argc, result);
+            }
+        }
+    }
 }
